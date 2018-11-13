@@ -1,0 +1,245 @@
+<!--
+  ~ © Copyright 2013 EntIT Software LLC
+  ~  Certain versions of software and/or documents (“Material”) accessible here may contain branding from
+  ~  Hewlett-Packard Company (now HP Inc.) and Hewlett Packard Enterprise Company.  As of September 1, 2017,
+  ~  the Material is now offered by Micro Focus, a separately owned and operated company.  Any reference to the HP
+  ~  and Hewlett Packard Enterprise/HPE marks is historical in nature, and the HP and Hewlett Packard Enterprise/HPE
+  ~  marks are the property of their respective owners.
+  ~ __________________________________________________________________
+  ~ MIT License
+  ~
+  ~ © Copyright 2012-2018 Micro Focus or one of its affiliates.
+  ~
+  ~ The only warranties for products and services of Micro Focus and its affiliates
+  ~ and licensors (“Micro Focus”) are set forth in the express warranty statements
+  ~ accompanying such products and services. Nothing herein should be construed as
+  ~ constituting an additional warranty. Micro Focus shall not be liable for technical
+  ~ or editorial errors or omissions contained herein.
+  ~ The information contained herein is subject to change without notice.
+  ~ ___________________________________________________________________
+  ~
+  -->
+
+<html>
+<head>
+    <style>
+        table#t01 tr:nth-child(even) {
+            background-color: #eee;
+        }
+        table#t01 tr:nth-child(odd) {
+            background-color: #fff;
+        }
+        table#t01 th {
+            background-color: black;
+            color: white;
+            text-align: left;
+            padding: 5px;
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+        table#t01 td {
+            padding: 5px;
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+    </style>
+</head>
+<body>
+<p>The content of the field must be in yaml syntax (indentation and carriage return are important) composed according to the parameters described in the tables below.</p>
+<p><strong>Important</strong>: all parameters must be in lowercase.</p>
+<hr>
+<p>
+<div><strong>test:</strong></div>
+<div>
+    <table id="t01">
+        <tbody>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>name</td>
+            <td>This will be the test name.</td>
+            <td>Required</td>
+        </tr>
+        <tr>
+            <td>testfolderpath</td>
+            <td>This will be the location of the test in the Test Management folder tree (e.g. "MyMainFolder\\MySubfolder\\MySubSubFolder"). Double backslash character should be used as folder separator. The Root folder ('Subject') should not be specified.</td>
+            <td>Required</td>
+        </tr>
+        <tr>
+            <td>content</td>
+            <td>The content of the test that requires additonal parameters specified in the table below.</td>
+            <td>Required</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</p>
+<hr>
+<p>
+<div><strong>content:</strong></div>
+<div>
+    <table id="t01">
+        <tbody>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>controller</td>
+            <td>Defines the controller to be used during the test execution (must be a Host available in the Performance Center project). If not specified, a controller will be chosen among the different controllers available in the Performance Center project.</td>
+            <td>Not required.</td>
+        </tr>
+        <tr>
+            <td>lgamount</td>
+            <td>Number of Load Generators to allocate to the test (all groups in the test will be executed by the same Load Generators).</td>
+            <td>Not required if each group defined in the 'groups' parameter defines the LoadGenerator(s) it will be using via 'lgname' parameter (see 'groups' table below)</td>
+        </tr>
+        <tr>
+            <td>groups</td>
+            <td>List in which every member defines a script (or group) to be included in the test. The parameter to be used in each member are specified in the 'groups' table below.</td>
+            <td>Required</td>
+        </tr>
+        <tr>
+            <td>scheduler</td>
+            <td>Can help define the duration of a test and if the Virtual Users should be started simultaneously or gradually. See table below.</td>
+            <td>Not required</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</p>
+<hr>
+<p>
+<div><strong>groups:</strong></div>
+<div>
+    <table id="t01">
+        <tbody>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>groupname</td>
+            <td>Name of the group (must be unique if several groups are defined).</td>
+            <td>Required</td>
+        </tr>
+        <tr>
+            <td>vusers</td>
+            <td>Number of Virtual Users to use for running the script (group).</td>
+            <td>Required</td>
+        </tr>
+        <tr>
+            <td>scriptid</td>
+            <td>Id of the script in the Performance Center project.</td>
+            <td>Not required if 'scriptfullname' parameter is specified</td>
+        </tr>
+        <tr>
+            <td>scriptfullname</td>
+            <td>Script folder and script name of the script (for example "MyMainFolder\\MySubFolder\\MyScriptName') to be added to the group. The root folder of Performance Center named "Subject" should not be specified and a double backslash should be used for separators).</td>
+            <td>Not required if 'scriptid' parameter is specified</td>
+        </tr>
+        <tr>
+            <td>lgname</td>
+            <td>List of Load Generators to be used to run the script (or group). The supported values are:
+                <ul>
+                    <li>For using an existing LoadGenerator defined in Performance Center as host, specify its hostname as defined in Performance Center.</li>
+                    <li>For using an automatically matched LoadGenerator, specify the value "LG" followed by a number (recommended).</li>
+                    <li>For using a dynamic LoadGenerator (this is available if your Performance Center server and project are set to work with Docker), use the value "DOCKER" followed by a number.</li>
+                </ul>
+            </td>
+            <td>Not required and will be ignored if 'lgamount' parameter is specified.</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</p>
+<hr>
+<p>
+<div><strong>scheduler:</strong></div>
+<div>
+    <table id="t01">
+        <tbody>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+        <tr>
+            <td>rampuptimeinseconds</td>
+            <td>if specified, the Virtual Users will be started gradually (every 15 seconds, additional Virtual Users will be added to the execution of the test until the time specified in the parameter ends).</td>
+            <td>Not required</td>
+        </tr>
+        <tr>
+            <td>durationinseconds</td>
+            <td>Total time it will take to execute the test after all Virtual Users are started.</td>
+            <td>Not required</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</p>
+<hr>
+<p>
+<div>In the example below:
+    <ul>
+        <li>The test name is "mytestname"</li>
+        <li>It will be placed under the folder path "Subject\\Tests\\mytests" (the root folder of the folders which is "Subject" should not be specified). The folder separator is a double backslash.</li>
+        <li>In the content:
+            <ul>
+                <li>We do not specify the controller to be used in the 'controller' parameter which means a random available controller will be used to execute the test.</li>
+                <li>We do not specify the 'lgamount' parameter which means we rely on the 'lgname' parameter specified in each group.</li>
+                <li>in the groups:
+                    <ul>
+                        <li>We add two scripts and for each, we provide a value in the 'groupname' parameter (the value should be unique for each group) and the number of Virtual Users used to run the group.</li>
+                        <li>As we do not know the ID of the scripts, we use the 'scriptfullname' parameter in which we only mention the path of the script (without "Subject") followed by the script name. The folder separator is a double backslash.</li>
+                        <li>We specify the Load Generators that will be used by each group (in this case, Load Generators will be automatically matched as we use the 'LG' prefix).</li>
+                    </ul>
+                </li>
+            </ul>
+        </li>
+        <li>In the scheduler:
+            <ul>
+                <li>We want all Virtual Users to be initialized gradually (45 seconds).</li>
+                <li>We want the test to stop after 5 minutes (300 seconds).</li>
+            </ul>
+        </li>
+    </ul>
+</div>
+<pre>
+<code>
+##################################################
+#test
+name: mytestname
+testfolderpath: "Tests\\mytests"
+content:
+#  controller: "mycontroller"
+#  lgamount: '2'
+  groups:
+    - groupname: "TEstInt"
+      vusers: '20'
+#      scriptid: '1'
+      scriptfullname: "plugin\\TEstInt"
+      lgname:
+        - "LG1"
+        - "LG2"
+    - groupname: "Mtours"
+      vusers: '20'
+#      scriptid: '2'
+      scriptfullname: "plugin\\mtours"
+      lgname:
+        - "LG3"
+        - "LG4"
+  scheduler:
+    rampuptimeinseconds: '45'
+    durationinseconds: '300'
+##################################################
+</code>
+</pre>
+</p>
+</body>
+</html>

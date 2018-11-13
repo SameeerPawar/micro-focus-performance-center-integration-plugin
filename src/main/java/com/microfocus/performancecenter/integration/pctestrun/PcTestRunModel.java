@@ -25,12 +25,12 @@
  * */
 package com.microfocus.performancecenter.integration.pctestrun;
 
-import java.util.Arrays;
-import java.util.List;
-
+import com.microfocus.adm.performancecenter.plugins.common.pcentities.PostRunAction;
+import com.microfocus.adm.performancecenter.plugins.common.pcentities.TimeslotDuration;
 import org.kohsuke.stapler.DataBoundConstructor;
 
-import com.microfocus.adm.performancecenter.plugins.common.pcentities.*;
+import java.util.Arrays;
+import java.util.List;
 
 public class PcTestRunModel {
 
@@ -39,11 +39,13 @@ public class PcTestRunModel {
     public static final String    DO_NOTHING      = "Do Not Collate";
 
     private final String           serverAndPort;
-    private final String                 pcServerName;
-    private final String                 credentialsId;
-    private final String                 almDomain;
-    private final String                 almProject;
-    private final String                 testId;
+    private final String           pcServerName;
+    private final String           credentialsId;
+    private final String           almDomain;
+    private final String           almProject;
+    private final String           testToRun;
+    private String           testId;
+    private final String           testContentToCreate;
     private String                 testInstanceId;
     private final String           autoTestInstanceID;
     private final TimeslotDuration timeslotDuration;
@@ -62,8 +64,8 @@ public class PcTestRunModel {
 
 
     @DataBoundConstructor
-    public PcTestRunModel(String serverAndPort, String pcServerName, String credentialsId, String almDomain, String almProject,
-                          String testId, String autoTestInstanceID, String testInstanceId, String timeslotDurationHours, String timeslotDurationMinutes,
+    public PcTestRunModel(String serverAndPort, String pcServerName, String credentialsId, String almDomain, String almProject, String testToRun,
+                          String testId, String testContentToCreate, String autoTestInstanceID, String testInstanceId, String timeslotDurationHours, String timeslotDurationMinutes,
                           PostRunAction postRunAction, boolean vudsMode, String description, String addRunToTrendReport, String trendReportId, boolean HTTPSProtocol,
                           String proxyOutURL, String credentialsProxyId, String retry, String retryDelay, String retryOccurrences ) {
 
@@ -72,7 +74,9 @@ public class PcTestRunModel {
         this.credentialsId = credentialsId;
         this.almDomain = almDomain;
         this.almProject = almProject;
+        this.testToRun = testToRun;
         this.testId = testId;
+        this.testContentToCreate = testContentToCreate;
         this.autoTestInstanceID = autoTestInstanceID;
         this.testInstanceId = testInstanceId;
         this.timeslotDuration = new TimeslotDuration(timeslotDurationHours, timeslotDurationMinutes);
@@ -166,6 +170,20 @@ public class PcTestRunModel {
         return fromPcClient?useParameterIfNeeded(buildParameters,this.credentialsProxyId):getCredentialsProxyId();
     }
 
+    public String getTestToRun() {
+        return this.testToRun;
+    }
+
+    public String getTestContentToCreate() {
+
+        return this.testContentToCreate;
+    }
+
+    public String getYamlContent(boolean fromPcClient) {
+
+        return fromPcClient?useParameterIfNeeded(buildParameters,this.testContentToCreate): testContentToCreate;
+    }
+
     public String getAlmDomain() {
 
         return this.almDomain;
@@ -194,6 +212,11 @@ public class PcTestRunModel {
     public String getTestId(boolean fromPcClient) {
 
         return fromPcClient?useParameterIfNeeded(buildParameters,this.testId):getTestId();
+    }
+
+    public void setTestId(String testId) {
+
+        this.testId = testId;
     }
 
     public String getTestInstanceId() {

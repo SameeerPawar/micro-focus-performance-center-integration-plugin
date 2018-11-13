@@ -26,25 +26,20 @@
  * */
 package com.microfocus.performancecenter.integration.pctestrun;
 
+import com.cloudbees.plugins.credentials.CredentialsProvider;
+import com.cloudbees.plugins.credentials.common.StandardUsernameListBoxModel;
+import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
+import com.cloudbees.plugins.credentials.common.UsernamePasswordCredentials;
+import com.cloudbees.plugins.credentials.domains.URIRequirementBuilder;
+import com.cloudbees.plugins.credentials.matchers.IdMatcher;
 import com.microfocus.adm.performancecenter.plugins.common.pcentities.*;
+import com.microfocus.performancecenter.integration.common.helpers.configuration.ConfigurationService;
+import com.microfocus.performancecenter.integration.common.helpers.result.model.junit.Error;
+import com.microfocus.performancecenter.integration.common.helpers.result.model.junit.Failure;
+import com.microfocus.performancecenter.integration.common.helpers.result.model.junit.*;
 import com.microfocus.performancecenter.integration.configuresystem.ConfigureSystemSection;
 import com.microfocus.performancecenter.integration.pctestrun.helper.AdditionalParametersAction;
-import com.microfocus.performancecenter.integration.common.helpers.result.model.junit.Error;
-import com.microfocus.performancecenter.integration.common.helpers.result.model.junit.Failure ;
-import com.microfocus.performancecenter.integration.common.helpers.result.model.junit.JUnitTestCaseStatus ;
-import com.microfocus.performancecenter.integration.common.helpers.result.model.junit.Testcase ;
-import com.microfocus.performancecenter.integration.common.helpers.result.model.junit.Testsuite ;
-import com.microfocus.performancecenter.integration.common.helpers.result.model.junit.Testsuites ;
-import com.microfocus.performancecenter.integration.common.helpers.configuration.ConfigurationService ;
-
-import static com.microfocus.performancecenter.integration.common.helpers.utils.LogHelper.log;
-import static com.microfocus.performancecenter.integration.common.helpers.utils.LogHelper.logStackTrace;
-
-import hudson.Util;
-import hudson.Extension;
-import hudson.FilePath;
-import hudson.Launcher;
-import hudson.PluginWrapper;
+import hudson.*;
 import hudson.console.HyperlinkNote;
 import hudson.model.*;
 import hudson.model.queue.Tasks;
@@ -66,7 +61,10 @@ import javax.annotation.Nonnull;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 import java.beans.IntrospectionException;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.text.Format;
 import java.text.SimpleDateFormat;
@@ -75,17 +73,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import com.cloudbees.plugins.credentials.CredentialsProvider;
-import com.cloudbees.plugins.credentials.common.StandardUsernameListBoxModel;
-import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
-import com.cloudbees.plugins.credentials.common.UsernamePasswordCredentials;
-import com.cloudbees.plugins.credentials.domains.URIRequirementBuilder;
-import com.cloudbees.plugins.credentials.matchers.IdMatcher;
-
 import static com.microfocus.adm.performancecenter.plugins.common.pcentities.RunState.FINISHED;
 import static com.microfocus.adm.performancecenter.plugins.common.pcentities.RunState.RUN_FAILURE;
+import static com.microfocus.performancecenter.integration.common.helpers.utils.LogHelper.log;
+import static com.microfocus.performancecenter.integration.common.helpers.utils.LogHelper.logStackTrace;
 
-public class PcTestRunBuilder extends Builder implements SimpleBuildStep{
+public class PcTestRunBuilder extends Builder implements SimpleBuildStep {
 
     private static final String artifactsDirectoryName = "archive";
     public static final String artifactsResourceName = "artifact";
@@ -93,7 +86,7 @@ public class PcTestRunBuilder extends Builder implements SimpleBuildStep{
     public static final String trendReportStructure = "%s/%s/performanceTestsReports/TrendReports";
     public static final String pcReportArchiveName = "Reports.zip";
     public static final String pcReportFileName = "Report.html";
-    private static final String RUNID_BUILD_VARIABLE = "HP_RUN_ID";
+    private static final String RUNID_BUILD_VARIABLE = "PC_RUN_ID";
 
     public static final String    TRENDED         = "Trended";
     public static final String    PENDING         = "Pending";
@@ -114,7 +107,9 @@ public class PcTestRunBuilder extends Builder implements SimpleBuildStep{
     private String credentialsId;
     private String almDomain;
     private String almProject;
+    private String testToRun;
     private String testId;
+    private String testContentToCreate;
     private String testInstanceId;
     private String autoTestInstanceID;
     private PostRunAction postRunAction;
@@ -146,7 +141,9 @@ public class PcTestRunBuilder extends Builder implements SimpleBuildStep{
             String credentialsId,
             String almDomain,
             String almProject,
+            String testToRun,
             String testId,
+            String testContentToCreate,
             String testInstanceId,
             String autoTestInstanceID,
             String timeslotDurationHours,
@@ -170,7 +167,9 @@ public class PcTestRunBuilder extends Builder implements SimpleBuildStep{
         this.credentialsId = credentialsId;
         this.almDomain = almDomain;
         this.almProject = almProject;
+        this.testToRun = testToRun;
         this.testId = testId;
+        this.testContentToCreate = testContentToCreate;
         this.testInstanceId = testInstanceId;
         this.autoTestInstanceID = autoTestInstanceID;
         this.timeslotDurationHours = timeslotDurationHours;
@@ -289,7 +288,9 @@ public class PcTestRunBuilder extends Builder implements SimpleBuildStep{
                             credentialsId,
                             almDomain.trim(),
                             almProject.trim(),
+                            testToRun,
                             testId.trim(),
+                            testContentToCreate,
                             autoTestInstanceID,
                             testInstanceId.trim(),
                             timeslotDurationHours.trim(),
@@ -416,7 +417,7 @@ public class PcTestRunBuilder extends Builder implements SimpleBuildStep{
                 log(listener, "getTestName failed. Using '%s' as testname.", true, testName);
             }
             else
-                log(listener, "%s %s", true, Messages.TestNameIs(), testName);
+                log(listener, "%s '%s'.", true, Messages.TestNameIs(), testName);
         }
         catch (PcException|IOException ex) {
             testName = String.format("TestId_%s", getPcTestRunModel().getTestId());
@@ -520,6 +521,9 @@ public class PcTestRunBuilder extends Builder implements SimpleBuildStep{
                             if (!("testinstanceid".equals(name) && "AUTO".equals(getPcTestRunModel().getAutoTestInstanceID()))
                                     && !(("retrydelay".equals(name) && "NO_RETRY".equals(getPcTestRunModel().getRetry())) || getPcTestRunModel().getRetry().isEmpty())
                                     && !(("retryoccurrences".equals(name) && "NO_RETRY".equals(getPcTestRunModel().getRetry())) || getPcTestRunModel().getRetry().isEmpty())
+                                    && !"testcontenttocreate".equals(name)
+                                    && !"testid".equals(name)
+                                    && !"testtorun".equals(name)
                                     ) {
                                 if("doCheckCredentialsId".equals(method.getName()) && "credentialsid".equals(name) && "getCredentialsId".equals(modelMethodName)
                                         || "doCheckCredentialsProxyId".equals(method.getName()) && "credentialsproxyid".equals(name) && "getCredentialsProxyId".equals(modelMethodName)
@@ -940,9 +944,16 @@ public class PcTestRunBuilder extends Builder implements SimpleBuildStep{
     {
         return getPcTestRunModel().getAlmProject();
     }
+    public String getTestToRun() {
+        return getPcTestRunModel().getTestToRun();
+    }
     public String getTestId()
     {
         return getPcTestRunModel().getTestId();
+    }
+    public String getTestContentToCreate()
+    {
+        return getPcTestRunModel().getTestContentToCreate();
     }
     public String getAlmDomain()
     {
@@ -970,11 +981,13 @@ public class PcTestRunBuilder extends Builder implements SimpleBuildStep{
     {
         return getPcTestRunModel().getAutoTestInstanceID();
     }
+
+
+
     public String getTestInstanceId()
     {
         return getPcTestRunModel().getTestInstanceId();
     }
-
 
     public String getAddRunToTrendReport()
     {
@@ -1055,9 +1068,29 @@ public class PcTestRunBuilder extends Builder implements SimpleBuildStep{
             return validateString(value, "Project");
         }
 
-        public FormValidation doCheckTestId(@QueryParameter String value) {
+        public FormValidation doCheckTestToRun(@QueryParameter String value, @QueryParameter String testId, @QueryParameter String testContentToCreate, @AncestorInPath AbstractProject project) {
 
-            return validateHigherThanInt(value, "Test ID", 0, true);
+            FormValidation formValidation = verifyTestToRun(value, testId, testContentToCreate);
+            return FormValidation.ok();
+        }
+
+        public FormValidation doCheckTestId(@QueryParameter String value, @QueryParameter String testToRun, @QueryParameter String testContentToCreate, @AncestorInPath AbstractProject project) {
+            FormValidation formValidation =  verifyTestToRun(testToRun, value, testContentToCreate);
+            return FormValidation.ok();
+        }
+
+        public FormValidation doCheckTestContentToCreate(@QueryParameter String value, @QueryParameter String testToRun, @QueryParameter String testId, @AncestorInPath AbstractProject project) {
+            FormValidation formValidation =  verifyTestToRun(testToRun, testId, value);
+            return FormValidation.ok();
+        }
+
+        private FormValidation verifyTestToRun(String testToRun, String testId, String testContentToCreate) {
+            if(testToRun == null || testToRun.isEmpty() || "EXISTING_TEST".equals(testToRun))
+                return validateHigherThanInt(testId, "Test ID", 0, true);
+            else if("CREATE_TEST".equals(testToRun) && testContentToCreate != null && !testContentToCreate.isEmpty())
+                return FormValidation.ok();
+            else
+                return FormValidation.error("Provide existing test ID or test Content to create.");
         }
 
         public FormValidation doCheckRetryDelay(@QueryParameter String value) {
@@ -1165,6 +1198,8 @@ public class PcTestRunBuilder extends Builder implements SimpleBuildStep{
                 int limit,
                 boolean limitIncluded) {
             FormValidation ret = FormValidation.ok();
+            if(value == null || value.isEmpty())
+                return FormValidation.error("value is null or empty");
             value = value.trim();
             if (StringUtils.isBlank(value)) {
                 ret = FormValidation.error(" " + Messages.MustBeSet());

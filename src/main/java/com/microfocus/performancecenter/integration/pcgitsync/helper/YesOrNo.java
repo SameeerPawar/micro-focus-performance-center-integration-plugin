@@ -20,39 +20,20 @@
  *
  */
 
-
 package com.microfocus.performancecenter.integration.pcgitsync.helper;
 
-import hudson.AbortException;
-import hudson.FilePath;
-import hudson.Launcher;
-import hudson.model.AbstractBuild;
-import hudson.model.BuildListener;
-import hudson.model.Run;
-import hudson.model.TaskListener;
-import hudson.tasks.Builder;
+public enum YesOrNo {
 
-import javax.annotation.Nonnull;
-import java.io.IOException;
+    YES("Yes"),
+    NO("No");
 
-@SuppressWarnings("deprecation")
-public abstract class AbstractPcGitBuildStep<T extends AbstractPcGitBuildStepDescriptor> extends Builder {
-    @Override
-    public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws InterruptedException, IOException {
-        FilePath workspace = build.getWorkspace();
-        if (workspace == null) {
-            throw new AbortException("no workspace for " + build);
-        }
-        perform(build, workspace, launcher, listener);
-        return true;
+    private String value;
+
+    private YesOrNo(String value) {
+        this.value = value;
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public T getDescriptor() {
-        return (T) super.getDescriptor();
+    public String getValue() {
+        return value;
     }
-
-    public abstract void perform(@Nonnull Run<?, ?> build, @Nonnull FilePath workspace, @Nonnull Launcher launcher, @Nonnull TaskListener listener) throws InterruptedException, IOException;
-
 }

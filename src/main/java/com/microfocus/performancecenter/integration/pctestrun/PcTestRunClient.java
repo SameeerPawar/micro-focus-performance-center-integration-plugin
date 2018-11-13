@@ -29,27 +29,28 @@
 package com.microfocus.performancecenter.integration.pctestrun;
 
 import com.cloudbees.plugins.credentials.common.UsernamePasswordCredentials;
-
+import com.microfocus.adm.performancecenter.plugins.common.pcentities.*;
+import com.microfocus.adm.performancecenter.plugins.common.pcentities.pcsubentities.test.Test;
+import com.microfocus.adm.performancecenter.plugins.common.rest.PcRestProxy;
+import com.microfocus.performancecenter.integration.configuresystem.ConfigureSystemSection;
 import hudson.FilePath;
-
-import java.beans.IntrospectionException;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.*;
-import java.util.*;
-
 import hudson.console.HyperlinkNote;
 import hudson.model.TaskListener;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.client.ClientProtocolException;
 
-import com.microfocus.adm.performancecenter.plugins.common.pcentities.*;
-import com.microfocus.adm.performancecenter.plugins.common.rest.PcRestProxy;
+import java.beans.IntrospectionException;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.*;
 
 import static com.microfocus.performancecenter.integration.common.helpers.utils.LogHelper.log;
 import static com.microfocus.performancecenter.integration.common.helpers.utils.LogHelper.logStackTrace;
-import com.microfocus.performancecenter.integration.configuresystem.ConfigureSystemSection;
 
 public class PcTestRunClient {
 
@@ -100,7 +101,7 @@ public class PcTestRunClient {
                     log(listener, "%s", true, Messages.UsingPCCredentialsBuildParameters());
                 else
                     log(listener, "%s", true, Messages.UsingPCCredentialsConfiguration());
-                log(listener, "%s\n[PCServer='%s://%s', User='%s']", true, Messages.TryingToLogin(), model.isHTTPSProtocol(), model.getPcServerName(true), usernamePCPasswordCredentials.getUsername());
+                log(listener, "%s\n[PCServer='%s://%s/LoadTest', User='%s']", true, Messages.TryingToLogin(), model.isHTTPSProtocol(), model.getPcServerName(true), usernamePCPasswordCredentials.getUsername());
                 loggedIn = restProxy.authenticate(usernamePCPasswordCredentials.getUsername(), usernamePCPasswordCredentials.getPassword().getPlainText());
             }
             else {
@@ -122,10 +123,20 @@ public class PcTestRunClient {
 
     public int startRun() throws NumberFormatException, ClientProtocolException, PcException, IOException {
 
+        int testID;
+        Test test;
+        if("EXISTING_TEST".equals(model.getTestToRun())) {
+            testID = Integer.parseInt(model.getTestId(true));
+            test = restProxy.getTest(testID);
+            log(listener, "Running existing test: Test ID %s, Name: %s, Path: %s", true, test.getID(), test.getName(), test.getTestFolderPath());
+        }
+        else {
+            test = restProxy.createOrUpdateTestFromYamlTest(model.getTestContentToCreate());
+            testID = Integer.parseInt(test.getID());
+            model.setTestId(test.getID());
+            log(listener, "Running created/updated test: Test ID %s, Name: %s, Path: %s", true, test.getID(), test.getName(), test.getTestFolderPath());
+        }
 
-
-
-        int testID = Integer.parseInt(model.getTestId(true));
         int testInstance = getCorrectTestInstanceID(testID);
         setCorrectTrendReportID();
 
@@ -276,7 +287,7 @@ public class PcTestRunClient {
                     if (pcTestSets !=null && pcTestSets.getPcTestSetsList() !=null){
                         PcTestSet pcTestSet = pcTestSets.getPcTestSetsList().get(pcTestSets.getPcTestSetsList().size()-1);
                         int testSetID = pcTestSet.getTestSetID();
-                        log(listener, "%s (testID: %s, TestSetID: %s", true,
+                        log(listener, "%s (Test ID: %s, TestSet ID: %s", true,
                                 Messages.CreatingNewTestInstance(),
                                 testID,
                                 testSetID);

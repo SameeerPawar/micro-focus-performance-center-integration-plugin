@@ -40,6 +40,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import static com.microfocus.performancecenter.integration.common.helpers.utils.LogHelper.log;
+import static com.microfocus.performancecenter.integration.pcgitsync.PcGitSyncClient.initMessage;
 
 
 @Extension
@@ -48,20 +49,15 @@ public class ModifiedFiles {
     private boolean addDate = true;
     @CheckForNull
     public SortedSet<ModifiedFile> getModifiedFilesSinceLastSuccess(TaskListener listener, Run<?, ?> current, String remoteWorkspacePath) {
-        log(listener, "", false);
-        log(listener, "**************************************************************************************", false);
-        log(listener, "**************************************************************************************", false);
-        log(listener, "Beginning to analyze modifications made in GIT repository since last successful build.", false);
-        log(listener, "**************************************************************************************", false);
-        log(listener, "**************************************************************************************", false);
-        log(listener, "", false);
+        initMessage(listener, "Beginning to analyze modifications made in GIT repository since last successful build", true);
+
         Run<?, ?> lastSuccess = current.getPreviousSuccessfulBuild();
 
         if (lastSuccess == null) {
             log(listener, "No previously successful build was found. All scripts will be uploaded.", addDate);
             return null;
         }
-        log(listener, "The last successful build was found (id = %d). Only modified scripts will be loaded", addDate, lastSuccess.getNumber());
+        log(listener, "The last successful build was found (ID = %d). Only modified scripts will be loaded", addDate, lastSuccess.getNumber());
 
         List<ChangeLogSet> changeLogList = new Changes((AbstractBuild) current, lastSuccess.getNumber() + 1).getChanges();
         return getAllChangedFiles(Paths.get(remoteWorkspacePath), changeLogList);
