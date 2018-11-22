@@ -55,15 +55,21 @@ import static com.microfocus.performancecenter.integration.common.helpers.utils.
 public class PcTestRunClient {
 
     private PcTestRunModel model;
+    private String testToCreate;
+    private String testName;
+    private String testFolderPath;
     private PcRestProxy restProxy;
     private boolean loggedIn;
     private TaskListener listener;
     private ConfigureSystemSection configureSystemSection;
 
-    public PcTestRunClient(PcTestRunModel pcTestRunModel, TaskListener listener, ConfigureSystemSection configureSystemSection) {
+    public PcTestRunClient(PcTestRunModel pcTestRunModel, String testToCreate, String testName, String testFolderPath, TaskListener listener, ConfigureSystemSection configureSystemSection) {
         try {
             this.listener = listener;
-            model = pcTestRunModel;
+            this.model = pcTestRunModel;
+            this.testToCreate = testToCreate;
+            this.testName = testName;
+            this.testFolderPath = testFolderPath;
             this.configureSystemSection = configureSystemSection;
             String credentialsProxyId = model.getCredentialsProxyId(true);
             UsernamePasswordCredentials usernamePCPasswordCredentialsForProxy = PcTestRunBuilder.getCredentialsId(credentialsProxyId);
@@ -96,6 +102,7 @@ public class PcTestRunClient {
             this.listener = listener;
             String credentialsId = model.getCredentialsId(true);
             UsernamePasswordCredentials usernamePCPasswordCredentials = PcTestRunBuilder.getCredentialsId(credentialsId);
+            log(listener,"",true);
             if(usernamePCPasswordCredentials != null) {
                 if(model.getCredentialsId().startsWith("$"))
                     log(listener, "%s", true, Messages.UsingPCCredentialsBuildParameters());
@@ -105,8 +112,8 @@ public class PcTestRunClient {
                 loggedIn = restProxy.authenticate(usernamePCPasswordCredentials.getUsername(), usernamePCPasswordCredentials.getPassword().getPlainText());
             }
             else {
-                log(listener, "%s\n[PCServer='%s://%s', User='%s']", true, Messages.TryingToLogin(), model.isHTTPSProtocol(), model.getPcServerName(true), PcTestRunBuilder.usernamePCPasswordCredentials.getUsername());
-                loggedIn = restProxy.authenticate(PcTestRunBuilder.usernamePCPasswordCredentials.getUsername(), PcTestRunBuilder.usernamePCPasswordCredentials.getPassword().getPlainText());
+                log(listener, "Performance Center credentials are missing.", true);
+                loggedIn = false;
             }
         } catch (NullPointerException|PcException|IOException e) {
             log(listener, "%s: %s", true, Messages.Error(), e.getMessage());
@@ -125,21 +132,25 @@ public class PcTestRunClient {
 
         int testID;
         Test test;
+        log(listener,"",true);
         if("EXISTING_TEST".equals(model.getTestToRun())) {
             testID = Integer.parseInt(model.getTestId(true));
             test = restProxy.getTest(testID);
             log(listener, "Running existing test: Test ID %s, Name: %s, Path: %s", true, test.getID(), test.getName(), test.getTestFolderPath());
         }
         else {
-            test = restProxy.createOrUpdateTestFromYamlTest(model.getTestContentToCreate());
+            if(testName.isEmpty())
+                test = restProxy.createOrUpdateTestFromYamlTest(testToCreate);
+            else
+                test = restProxy.createOrUpdateTestFromYamlContent(testName, testFolderPath, testToCreate);
             testID = Integer.parseInt(test.getID());
             model.setTestId(test.getID());
-            log(listener, "Running created/updated test: Test ID %s, Name: %s, Path: %s", true, test.getID(), test.getName(), test.getTestFolderPath());
-        }
 
+            log(listener, "Running yaml test: Test ID %s, Name: %s, Path: %s", true, test.getID(), test.getName(), test.getTestFolderPath());
+        }
+        log(listener,"",true);
         int testInstance = getCorrectTestInstanceID(testID);
         setCorrectTrendReportID();
-
         log(listener, "\n%s \n" +
                         "====================\n" +
                         "%s: %s \n" +
@@ -150,7 +161,7 @@ public class PcTestRunClient {
                         "%s: %s \n" +
                         "%s: %s \n" +
                         "====================\n",
-                true,
+                false,
                 Messages.ExecutingLoadTest(),
                 Messages.Domain(), model.getAlmDomain(true),
                 Messages.Project(), model.getAlmProject(true),
@@ -434,10 +445,15 @@ public class PcTestRunClient {
                     Thread.sleep(interval);
                 }
                 threeStrikes = 3;
-            }
-            catch(InterruptedException|PcException e)
-            {
+            }catch(PcException e) {
                 threeStrikes--;
+            }
+            catch(InterruptedException e)
+            {
+                log(listener, "Job execution interrupted: %s", true,
+                        runId,
+                        e.getMessage());
+                break;
             }
         } while (lastState.ordinal() < completionState.ordinal());
         return response;

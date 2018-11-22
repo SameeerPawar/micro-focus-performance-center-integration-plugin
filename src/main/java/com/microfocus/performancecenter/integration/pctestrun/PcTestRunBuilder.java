@@ -72,6 +72,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.io.FilenameUtils;
 
 import static com.microfocus.adm.performancecenter.plugins.common.pcentities.RunState.FINISHED;
 import static com.microfocus.adm.performancecenter.plugins.common.pcentities.RunState.RUN_FAILURE;
@@ -820,8 +821,8 @@ public class PcTestRunBuilder extends Builder implements SimpleBuildStep {
                         "\n\n%s:\n%s" +
                         "\n\n%s:\n%s",
                 Messages.LoadTestRunID(), runId,
-                Messages.ViewAnalysisReport(), getPcTestRunModel().getserverAndPort() +  "/" +  build.getUrl() + viewUrl,
-                Messages.DownloadReport(), getPcTestRunModel().getserverAndPort() + "/" + build.getUrl() + downloadUrl);
+                Messages.ViewAnalysisReport(), getPcTestRunModel().getServerAndPort() +  "/" +  build.getUrl() + viewUrl,
+                Messages.DownloadReport(), getPcTestRunModel().getServerAndPort() + "/" + build.getUrl() + downloadUrl);
     }
 
     private String getArtifactsUrlPattern(Run<?, ?> build) {
@@ -906,7 +907,23 @@ public class PcTestRunBuilder extends Builder implements SimpleBuildStep {
             usernamePCPasswordCredentials = getCredentialsById(credentialsId, build, logger);
         if(credentialsProxyId != null && !credentialsProxyId.isEmpty())
             usernamePCPasswordCredentialsForProxy = getCredentialsById(credentialsProxyId, build, logger);
-        PcTestRunClient pcTestRunClient = new PcTestRunClient(getPcTestRunModel(), listener, configureSystemSection);
+        String testToCreate = "";
+        String testName ="";
+        String TestFolderPath = "";
+        if("CREATE_TEST".equals(getPcTestRunModel().getTestToRun())) {
+            log(listener,"",true);
+            if(verifyStringIsPath(getPcTestRunModel().getTestContentToCreate(true))) {
+
+                testToCreate = fileContenToString(getPcTestRunModel().getTestContentToCreate(true));
+                testName = fileNameWithoutExtension(getPcTestRunModel().getTestContentToCreate(true));
+                TestFolderPath = filePath(getPcTestRunModel().getTestContentToCreate(true));
+            }
+            else
+                testToCreate = getPcTestRunModel().getTestContentToCreate(true);
+            log(listener,"",true);
+        }
+
+        PcTestRunClient pcTestRunClient = new PcTestRunClient(getPcTestRunModel(), testToCreate, testName, TestFolderPath, listener, configureSystemSection);
         Testsuites testsuites = execute(listener, pcTestRunClient, build);
 
 //        // Create Trend Report
@@ -931,9 +948,34 @@ public class PcTestRunBuilder extends Builder implements SimpleBuildStep {
 
     }
 
+
+    private boolean verifyStringIsPath (String strPossiblePath) throws InterruptedException, IOException {
+        FilePath filePath = new FilePath(Workspace.getChannel(), getWorkspacePath().getPath() + "/" + strPossiblePath);
+        if (filePath.exists())
+            return true;
+        return false;
+    }
+
+
+    private String fileNameWithoutExtension (String strPossiblePath) throws InterruptedException, IOException {
+        FilePath filePath = new FilePath(Workspace.getChannel(), getWorkspacePath().getPath() + "/" + strPossiblePath);
+        return FilenameUtils.removeExtension(filePath.getName());
+    }
+
+    private String filePath (String strPossiblePath) throws InterruptedException, IOException {
+        File file = new File(strPossiblePath);
+        File fileParent = file.getParentFile();
+        return (fileParent.getPath()==null || fileParent.getPath().isEmpty()) ? "default_folder" : fileParent.getPath();
+    }
+
+    private String fileContenToString (String filePath) throws InterruptedException, IOException {
+        FilePath filePath2 = new FilePath(Workspace.getChannel(), getWorkspacePath().getPath() + "/" + filePath);
+        return filePath2.readToString();
+    }
+
     public String getServerAndPort()
     {
-        return getPcTestRunModel().getserverAndPort();
+        return getPcTestRunModel().getServerAndPort();
     }
     public String getPcServerName()
     {

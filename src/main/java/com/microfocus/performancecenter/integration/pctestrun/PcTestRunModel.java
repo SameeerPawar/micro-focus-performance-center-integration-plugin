@@ -136,7 +136,7 @@ public class PcTestRunModel {
         return this.retryOccurrences;
     }
 
-    public String getserverAndPort(){
+    public String getServerAndPort(){
         return this.serverAndPort;
     }
 
@@ -179,7 +179,7 @@ public class PcTestRunModel {
         return this.testContentToCreate;
     }
 
-    public String getYamlContent(boolean fromPcClient) {
+    public String getTestContentToCreate(boolean fromPcClient) {
 
         return fromPcClient?useParameterIfNeeded(buildParameters,this.testContentToCreate): testContentToCreate;
     }
