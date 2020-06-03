@@ -56,7 +56,9 @@ public class AffectedFolder implements Comparable<AffectedFolder> {
         String subjectRoot = "Subject";
         String scriptPath =  subjectRoot + "\\" + relativePath.toString().replace(File.separatorChar, '\\');
         Path script = Paths.get(scriptPath);
-        if (script.getParent().toString().equals(subjectRoot))
+        // getParent() call returns Null if no parent is present
+        // Since Subject root is the prefix of scriptPath, theoretically there in no parent
+        if (script.getParent()==null)
             return scriptPath;
         else
             return script.getParent().toString();
